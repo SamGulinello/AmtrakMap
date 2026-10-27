@@ -16,7 +16,7 @@
     "test:all": "npm run typecheck && npm run test && npm run test:e2e"
   },
   "dependencies": {
-    "maplibre-gl": "^4.7.1",
+    "maplibre-gl": "^6.16.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },

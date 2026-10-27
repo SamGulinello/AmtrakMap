@@ -13,8 +13,12 @@
  * the map stays in sync with the sidebar without re-populating data.
  */
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
-import maplibregl from 'maplibre-gl';
+import * as maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
+// MapLibre 6 derives its worker URL from import.meta.url, which points at the
+// bundled chunk rather than the package directory. Emitting the worker as an
+// asset and registering it explicitly is what keeps tiles rendering in a build.
+import mapWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?url';
 import type { AppFilters } from '../data/provider';
 import type { NetworkSnapshot } from '../data/provider';
 import type { GeoPoint } from '../types/domain';
@@ -28,6 +32,8 @@ const CONUS_BOUNDS: [[number, number], [number, number]] = [
   [-125.5, 24.0],
   [-66.5, 49.5],
 ];
+
+maplibregl.setWorkerUrl(mapWorkerUrl);
 
 function nationalView(map: maplibregl.Map, animate: boolean): void {
   const options = {
