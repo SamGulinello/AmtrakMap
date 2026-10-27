@@ -67,7 +67,7 @@ function StopRow({
     actual && scheduled && !sameInstant(actual, scheduled) ? formatTime(scheduled) : undefined;
 
   return (
-    <div className={`stop-row${departed ? ' departed' : ''}`}>
+    <div className={`stop-row${departed ? ' departed' : ''}`} data-testid="stop-row">
       <span className="stop-ind" aria-hidden="true">
         <span className="stop-dot" />
       </span>
@@ -124,7 +124,7 @@ export function TrainDetailPanel({
           <h2>{train.number} · {train.routeName}</h2>
           <div className="sub">
             <StatusDot tone={stopStatus} label={train.isStale ? 'Stale position' : statusLabel(pos?.dataKind)} />
-            {train.delaySummary && <> · {train.delaySummary}</>}
+            {train.delaySummary && <> · next stop {train.delaySummary}</>}
           </div>
         </div>
         <CloseButton onClick={onClose} />

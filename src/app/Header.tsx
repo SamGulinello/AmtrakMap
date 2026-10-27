@@ -6,10 +6,23 @@ function SourceBadge({ status }: { status: DataSourceStatus }) {
   if (!status.ok) cls += ' error';
   else if (status.dataKind === 'demo') cls += ' demo';
   else if (status.dataKind === 'live') cls += ' live';
+  // The label text is hidden on narrow screens, so the badge always carries a
+  // spoken name that states what the data actually is.
+  const label =
+    status.dataKind === 'demo'
+      ? 'Data source: demo snapshot, not live Amtrak data'
+      : status.dataKind === 'live'
+        ? 'Data source: live positions from Amtraker'
+        : 'Data source: unknown';
   return (
-    <span className={cls} title={status.error ?? status.sourceLabel}>
+    <span
+      className={cls}
+      title={status.error ?? status.sourceLabel}
+      aria-label={label}
+      data-testid="source-badge"
+    >
       <span className="dot" aria-hidden="true" />
-      <span>
+      <span className="badge-label">
         {status.dataKind === 'demo' ? 'DEMO SNAPSHOT' : status.dataKind === 'live' ? 'LIVE' : 'UNKNOWN'}
       </span>
     </span>
@@ -56,7 +69,7 @@ export function Header({
           {status.error && (
             <span className="status-dot error" aria-hidden="true" data-testid="error-indicator" />
           )}
-          <span className="time">
+          <span className="time" data-testid="last-updated">
             {!status.lastUpdated
               ? '—'
               : status.ok
@@ -64,7 +77,13 @@ export function Header({
                 : `Last good ${formatClock(status.lastUpdated)}`}
           </span>
         </div>
-        <button className="btn" onClick={onRefresh} disabled={!canRefresh} data-testid="refresh-button">
+        <button
+          className="btn"
+          onClick={onRefresh}
+          disabled={!canRefresh}
+          aria-label="Refresh"
+          data-testid="refresh-button"
+        >
           {status.refreshing ? (
             <span className="spinner" aria-hidden="true" />
           ) : (

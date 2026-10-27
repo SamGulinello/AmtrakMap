@@ -221,6 +221,7 @@ export function Sidebar({
                 value={filters.routeSlug}
                 onChange={(e) => patch({ routeSlug: e.target.value })}
                 aria-label="Filter by route"
+                data-testid="route-filter"
               >
                 <option value="">All routes</option>
                 {routeNames.map((name) => (

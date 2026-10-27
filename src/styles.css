@@ -77,6 +77,7 @@ a {
 }
 
 .app-root {
+  position: relative;
   display: grid;
   grid-template-columns: var(--sidebar-w) 1fr;
   grid-template-rows: var(--header-h) 1fr;
@@ -151,6 +152,7 @@ a {
   display: flex;
   align-items: center;
   gap: 10px;
+  min-width: 0;
 }
 
 .sidebar {
@@ -516,7 +518,7 @@ input[type='text'].filter-input {
 /* ---------- Detail panel ---------- */
 .detail-panel {
   position: absolute;
-  top: 74px;
+  top: calc(var(--header-h) + 12px);
   right: 14px;
   width: min(380px, calc(100vw - 28px));
   max-height: calc(100% - 90px);
@@ -737,6 +739,11 @@ input[type='text'].filter-input {
 }
 
 /* ---------- Mobile dock for detail ---------- */
+/* Hidden on desktop; the mobile media query below reveals it. */
+.network-toggle-hamburger {
+  display: none;
+}
+
 @media (max-width: 860px) {
   .app-root {
     grid-template-columns: 1fr;
@@ -766,6 +773,26 @@ input[type='text'].filter-input {
   }
   .brand-sub {
     display: none;
+  }
+  /* At phone widths the header keeps only what it can show without overflow:
+     full source text and the refresh label collapse, the relative time stays. */
+  .brand-name {
+    font-size: 13.5px;
+  }
+  .source-badge {
+    padding: 2px 8px;
+  }
+  .source-badge .badge-label {
+    display: none;
+  }
+  .header-right {
+    gap: 6px;
+  }
+  .btn-label {
+    display: none;
+  }
+  .status-strip .time {
+    font-size: 10.5px;
   }
   .network-toggle-hamburger {
     display: inline-flex;
@@ -848,11 +875,6 @@ input[type='text'].filter-input {
 .network-toggle button.active {
   background: var(--bg-elev-2);
   color: var(--fg);
-}
-
-/* Hamburger only makes sense when the sidebar is collapsible (mobile). */
-.network-toggle-hamburger {
-  display: none;
 }
 
 /* ---------- Refresh / status strip ---------- */

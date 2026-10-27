@@ -104,7 +104,7 @@ export default function App() {
       <Header
         status={status}
         onRefresh={refresh}
-        onToggleSidebar={mode === 'live' ? () => setSidebarOpen((v) => !v) : undefined}
+        onToggleSidebar={() => setSidebarOpen((v) => !v)}
         sidebarOpen={sidebarOpen}
       />
       <MapView

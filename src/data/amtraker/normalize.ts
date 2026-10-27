@@ -106,14 +106,20 @@ function parseStop(raw: AmtrakerStop, index: number, count: number): StopPredict
 
   const status = normalizeStopStatus(raw.status);
 
-  // Treat arr/dep as estimates only while the stop has not yet been departed.
-  // The provider fills future stops with the scheduled time verbatim; an
-  // identical value is not a prediction, so it must never be shown as one.
-  const isDeparted = status === 'departed' || (index === count - 1 && actualDeparture !== undefined);
+  // Only the source's own stop status declares a stop realized. The provider
+  // pre-fills `arr`/`dep` for stops the train has not reached yet (including the
+  // destination), so those values are projections and must be labelled as
+  // estimates — never as reported actuals.
+  const isDeparted = status === 'departed';
+  // A destination has no departure; the field mirrors the arrival placeholder.
+  const hasDeparture = index < count - 1;
+  // An estimate identical to the schedule carries no information and is dropped.
   const estimatedArrival =
     isDeparted || sameInstant(raw.arr, raw.schArr) ? undefined : actualArrival;
   const estimatedDeparture =
-    isDeparted || sameInstant(raw.dep, raw.schDep) ? undefined : actualDeparture;
+    !hasDeparture || isDeparted || sameInstant(raw.dep, raw.schDep)
+      ? undefined
+      : actualDeparture;
 
   // The delay badge must describe the time that is actually displayed, so both
   // use the same basis: an arrival when the stop has one, else a departure.
@@ -146,7 +152,7 @@ function parseStop(raw: AmtrakerStop, index: number, count: number): StopPredict
     estimatedArrival,
     estimatedDeparture,
     actualArrival: isDeparted ? actualArrival : undefined,
-    actualDeparture: isDeparted ? actualDeparture : undefined,
+    actualDeparture: isDeparted && hasDeparture ? actualDeparture : undefined,
     status: normalizedStatus,
     delayMinutes: delay,
     platform: nonEmpty(raw.platform) ? raw.platform : undefined,

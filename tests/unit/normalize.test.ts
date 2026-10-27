@@ -240,3 +240,98 @@ describe('parseStationResponse', () => {
     expect(out[0].position).toEqual({ lat: 41.8, lon: -87.6 });
   });
 });
+describe('stop realization rules', () => {
+  const stop = (over: Partial<AmtrakerStop>): AmtrakerStop => ({
+    code: 'XXX',
+    name: 'Test',
+    tz: 'America/Chicago',
+    schArr: '2026-10-26T10:00:00-05:00',
+    schDep: '2026-10-26T10:10:00-05:00',
+    arr: '2026-10-26T10:00:00-05:00',
+    dep: '2026-10-26T10:10:00-05:00',
+    status: 'Enroute',
+    ...over,
+  });
+
+  it('never reports a future stop projection as an actual time', () => {
+    // The provider fills `arr`/`dep` ahead of the train with its own projection.
+    const train = parseTrain(
+      baseTrain({
+        stations: [
+          stop({ code: 'AAA', status: 'Departed', arr: '2026-10-26T09:58:00-05:00' }),
+          stop({ code: 'BBB', status: 'Enroute', arr: '2026-10-26T10:20:00-05:00' }),
+        ],
+      }),
+    );
+    const future = train.stops[1];
+    expect(future.actualArrival).toBeUndefined();
+    expect(future.estimatedArrival).toBe('2026-10-26T10:20:00-05:00');
+    expect(future.delayMinutes).toBe(20);
+  });
+
+  it('treats a destination projection as an estimate, not an arrival', () => {
+    const train = parseTrain(
+      baseTrain({
+        stations: [
+          stop({ code: 'AAA', status: 'Departed' }),
+          stop({
+            code: 'ZZZ',
+            status: 'Enroute',
+            schArr: '2026-10-28T05:35:00-07:00',
+            arr: '2026-10-28T04:35:00-07:00',
+            schDep: '2026-10-28T05:35:00-07:00',
+            dep: '2026-10-28T04:35:00-07:00',
+          }),
+        ],
+      }),
+    );
+    const destination = train.stops[1];
+    expect(destination.status).toBe('destination');
+    expect(destination.actualArrival).toBeUndefined();
+    expect(destination.actualDeparture).toBeUndefined();
+    expect(destination.estimatedArrival).toBe('2026-10-28T04:35:00-07:00');
+    // A destination has no departure; the mirrored field is discarded.
+    expect(destination.estimatedDeparture).toBeUndefined();
+  });
+
+  it('drops an "estimate" that merely repeats the schedule', () => {
+    const train = parseTrain(
+      baseTrain({
+        stations: [
+          stop({ code: 'AAA', status: 'Departed' }),
+          stop({
+            code: 'BBB',
+            status: 'Enroute',
+            schArr: '2026-10-26T12:00:00-05:00',
+            arr: '2026-10-26T12:00:00-05:00',
+            schDep: '2026-10-26T12:00:00-05:00',
+            dep: '2026-10-26T12:00:00-05:00',
+          }),
+        ],
+      }),
+    );
+    const future = train.stops[1];
+    expect(future.estimatedArrival).toBeUndefined();
+    expect(future.estimatedDeparture).toBeUndefined();
+    expect(future.delayMinutes).toBeUndefined();
+  });
+
+  it('keeps reported actuals for departed stops', () => {
+    const train = parseTrain(
+      baseTrain({
+        stations: [
+          stop({
+            code: 'AAA',
+            status: 'Departed',
+            arr: '2026-10-26T10:14:00-05:00',
+            dep: '2026-10-26T10:16:00-05:00',
+          }),
+          stop({ code: 'BBB', status: 'Enroute' }),
+        ],
+      }),
+    );
+    expect(train.stops[0].actualArrival).toBe('2026-10-26T10:14:00-05:00');
+    // The origin has no inbound arrival, so its delay is departure-based.
+    expect(train.stops[0].delayMinutes).toBe(6);
+  });
+});

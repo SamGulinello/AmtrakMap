@@ -17,20 +17,41 @@ import type {
   AmtrakerTrainResponse,
 } from './types';
 
-// Note: imported via Vite JSON loader; fixtures are committed in the repo.
-import rawTrains from '../fixtures/amtraker-trains.snapshot.json';
-import rawStations from '../fixtures/amtraker-stations.snapshot.json';
-import rawStale from '../fixtures/amtraker-stale.snapshot.json';
-
 const FIXTURE_TIME = '2026-10-27T02:17:00Z';
+
+interface Fixtures {
+  trains: AmtrakerTrainResponse;
+  stations: AmtrakerStationResponse;
+  stale: AmtrakerStaleResponse;
+}
+
+let fixtures: Promise<Fixtures> | undefined;
+
+/**
+ * The snapshot is over a megabyte, so it is loaded on demand rather than
+ * bundled into the initial payload. Offline users never download it twice.
+ */
+function loadFixtures(): Promise<Fixtures> {
+  fixtures ??= Promise.all([
+    import('../fixtures/amtraker-trains.snapshot.json'),
+    import('../fixtures/amtraker-stations.snapshot.json'),
+    import('../fixtures/amtraker-stale.snapshot.json'),
+  ]).then(([trains, stations, stale]) => ({
+    trains: trains.default as unknown as AmtrakerTrainResponse,
+    stations: stations.default as unknown as AmtrakerStationResponse,
+    stale: stale.default as unknown as AmtrakerStaleResponse,
+  }));
+  return fixtures;
+}
 
 export class DemoProvider {
   readonly id = 'demo';
   readonly demoMode = true;
 
   async fetchSnapshot(): Promise<NetworkSnapshot> {
-    const trains = parseTrainResponse(rawTrains as unknown as AmtrakerTrainResponse);
-    const stations = parseStationResponse(rawStations as unknown as AmtrakerStationResponse);
+    const raw = await loadFixtures();
+    const trains = parseTrainResponse(raw.trains);
+    const stations = parseStationResponse(raw.stations);
     // Convert all train positions to demo provenance.
     for (const train of trains) {
       train.isStale = false;
@@ -40,7 +61,7 @@ export class DemoProvider {
         train.position.sourceLabel = DEMO_SOURCE_LABEL;
       }
     }
-    const stale = rawStale as unknown as AmtrakerStaleResponse;
+    const stale = raw.stale;
     const positionMap = buildStationPositionMap(stations);
     const routes = deriveRoutes(trains, positionMap);
 
