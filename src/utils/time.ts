@@ -82,6 +82,11 @@ export function formatRelative(epochMs: number, now: number = Date.now()): strin
   return `${Math.floor(hr / 24)}d ago`;
 }
 
+/** Human age of something that happened `ageMs` ago, e.g. "5 min ago". */
+export function formatAge(ageMs: number): string {
+  return formatRelative(Date.now() - Math.max(0, ageMs));
+}
+
 /** Wall-clock time for a given Date, e.g. "3:12 PM". */
 export function formatClock(time: string | Date): string {
   const d = typeof time === 'string' ? new Date(time) : time;

@@ -67,7 +67,7 @@ export class DemoProvider {
 
     const status: DataSourceStatus = {
       ok: true,
-      sourceLabel: `${DEMO_SOURCE_LABEL} (snapshot of ${FIXTURE_TIME})`,
+      sourceLabel: `${DEMO_SOURCE_LABEL} captured ${FIXTURE_TIME}`,
       providerId: this.id,
       dataKind: 'demo',
       lastUpdated: FIXTURE_TIME,

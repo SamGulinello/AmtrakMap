@@ -73,8 +73,8 @@ export function Header({
             {!status.lastUpdated
               ? '—'
               : status.ok
-                ? `Updated ${formatRelative(Number.isNaN(lastUpdateEpoch) ? 0 : lastUpdateEpoch)}`
-                : `Last good ${formatClock(status.lastUpdated)}`}
+                ? `Feed read ${formatRelative(Number.isNaN(lastUpdateEpoch) ? 0 : lastUpdateEpoch)}`
+                : `Last good read ${formatClock(status.lastUpdated)}`}
           </span>
         </div>
         <button

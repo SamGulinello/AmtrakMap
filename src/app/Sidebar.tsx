@@ -4,6 +4,8 @@ import type { NetworkSummary, SearchResults } from '../trains/selectors';
 import { routeSlug } from '../data/routes';
 import { StatusDot } from '../components/Status';
 import type { Selection } from './App';
+import type { DataSourceStatus } from '../types/domain';
+import { formatAge } from '../utils/time';
 
 /** Render a service date compactly: full ISO dates as "Oct 25", day-of-month as "day 25". */
 function formatServiceDate(value: string): string {
@@ -161,7 +163,7 @@ function SearchResultsPane({
         </div>
       )}
       {results.trains.length + results.stations.length + results.routes.length === 0 && (
-        <div className="empty-state">
+        <div className="empty-state" data-testid="empty-state">
           <strong>No matches</strong>
           Try a different search term.
         </div>
@@ -172,6 +174,7 @@ function SearchResultsPane({
 
 export function Sidebar({
   summary,
+  status,
   filters,
   onFiltersChange,
   routeNames,
@@ -186,6 +189,7 @@ export function Sidebar({
   onClose,
 }: {
   summary: NetworkSummary;
+  status: DataSourceStatus;
   filters: AppFilters;
   onFiltersChange: (f: AppFilters) => void;
   routeNames: string[];
@@ -283,6 +287,30 @@ export function Sidebar({
                 ⚠ {summary.staleTrains} train{summary.staleTrains === 1 ? '' : 's'} with stale position data
               </div>
             )}
+            {status.staleInfo && (
+              <div className="freshness-line" data-testid="freshness-line">
+                {/* The dot states what the data is, so demo data never gets the
+                    live colour even when the timestamps look recent. */}
+                <span
+                  className={`status-dot ${
+                    status.dataKind === 'demo'
+                      ? 'demo'
+                      : status.staleInfo.stale
+                        ? 'stale'
+                        : 'live'
+                  }`}
+                  aria-hidden="true"
+                />
+                {status.dataKind === 'demo'
+                  ? 'Snapshot positions averaged '
+                  : 'Positions reported on average '}
+                <strong>{formatAge(status.staleInfo.averageLastUpdateMs)}</strong>
+                {status.staleInfo.stale && ' · upstream flags the feed as stale'}
+              </div>
+            )}
+            <div className="freshness-line" data-testid="source-line">
+              Source: {status.sourceLabel || 'unknown'}
+            </div>
             {query.trim() === '' && (
               <div className="panel-title" style={{ marginTop: 10 }}>Rail services</div>
             )}

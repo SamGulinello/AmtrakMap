@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { getProvider, type ProviderMode } from '../data';
+import { useOnlineStatus } from '../hooks/useOnlineStatus';
+import { DataNotice } from './DataNotice';
 import { emptyFilters, type AppFilters } from '../data/provider';
 import { useNetworkData } from '../hooks/useNetworkData';
 import {
@@ -38,6 +40,7 @@ export default function App() {
   const [filters, setFilters] = useState<AppFilters>(emptyFilters);
   const [selection, setSelection] = useState<Selection>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const online = useOnlineStatus();
 
   const trains = snapshot?.trains ?? [];
   const stations = snapshot?.stations ?? [];
@@ -114,8 +117,10 @@ export default function App() {
         onSelectTrain={onSelectTrain}
         onSelectStation={onSelectStation}
       />
+      <DataNotice offline={!online} error={status.ok ? undefined : status.error} />
       <Sidebar
         summary={summary}
+        status={status}
         filters={filters}
         onFiltersChange={setFilters}
         routeNames={routeNames}

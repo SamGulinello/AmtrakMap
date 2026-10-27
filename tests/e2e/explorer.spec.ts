@@ -30,7 +30,7 @@ test.describe('Amtrak Live Explorer', () => {
 
     await expect(page.getByTestId('status-strip')).toBeVisible();
     await expect(page.getByTestId('source-badge')).toHaveAttribute('aria-label', /demo snapshot/i);
-    await expect(page.getByTestId('last-updated')).toContainText(/Updated|Last good/);
+    await expect(page.getByTestId('last-updated')).toContainText(/Feed read|Last good read/);
     await expect(page.locator('.maplibregl-canvas')).toBeVisible();
 
     // The network summary lives in the filters panel, a drawer on phones.
@@ -40,6 +40,10 @@ test.describe('Amtrak Live Explorer', () => {
     await expect(positions).toBeVisible();
     expect(Number((await positions.textContent())?.trim())).toBeGreaterThan(50);
     await expect(page.getByTestId('summary-stations')).not.toHaveText('0');
+    // Freshness must be stated in terms of the source's data, not the page load,
+    // and demo data must never be dressed up as live.
+    await expect(page.getByTestId('freshness-line').first()).toContainText(/Snapshot positions averaged/);
+    await expect(page.getByTestId('source-line')).toContainText(/demo/i);
 
     expect(errors).toEqual([]);
   });
@@ -129,5 +133,44 @@ test.describe('Amtrak Live Explorer', () => {
     await expect(page.getByTestId('train-detail')).toBeVisible();
     await page.keyboard.press('Escape');
     await expect(page.getByTestId('train-detail')).toHaveCount(0);
+  });
+});
+
+test.describe('degraded conditions', () => {
+  test('shows an offline notice instead of silently pretending to be live', async ({ page, context }) => {
+    await page.goto(DEMO);
+    await expect(page.getByTestId('data-notice')).toHaveCount(0);
+
+    await context.setOffline(true);
+    await page.evaluate(() => window.dispatchEvent(new Event('offline')));
+    const notice = page.getByTestId('data-notice');
+    await expect(notice).toBeVisible();
+    await expect(notice).toContainText('Offline.');
+
+    await context.setOffline(false);
+    await page.evaluate(() => window.dispatchEvent(new Event('online')));
+    await expect(notice).toHaveCount(0);
+  });
+
+  test('falls back to the labelled snapshot when the live feed is unreachable', async ({ page, context }) => {
+    // Block the upstream API before the app boots so the live provider fails.
+    await context.route('https://api.amtraker.com/**', (route) => route.abort());
+    await page.goto('/');
+
+    const notice = page.getByTestId('data-notice');
+    await expect(notice).toBeVisible({ timeout: 30_000 });
+    await expect(notice).toContainText('Data source problem');
+
+    // Whatever is displayed must still be honestly labelled as a snapshot.
+    await expect(page.getByTestId('source-badge')).toHaveAttribute('aria-label', /demo snapshot/i);
+  });
+
+  test('explains an empty filter result rather than showing a blank list', async ({ page }) => {
+    await page.goto(DEMO);
+    await openFiltersOnMobile(page);
+    await page.getByPlaceholder('Search trains, stations, routes…').fill('zzzznotarealtrain');
+    const empty = page.getByTestId('empty-state');
+    await expect(empty).toBeVisible();
+    await expect(empty).toContainText('No matches');
   });
 });

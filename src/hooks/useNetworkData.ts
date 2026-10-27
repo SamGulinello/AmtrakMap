@@ -91,17 +91,3 @@ export function useNetworkData(
 
   return { snapshot, status, refresh, hasLoadedOnce };
 }
-
-/** Manual refresh with a throttle to avoid hammering the source. */
-export function useRefreshThrottle(refresh: () => Promise<void>, minGapMs = 5000) {
-  const last = useRef(0);
-  return useCallback(
-    async (force = false) => {
-      const now = Date.now();
-      if (!force && now - last.current < minGapMs) return;
-      last.current = now;
-      await refresh();
-    },
-    [refresh, minGapMs],
-  );
-}
