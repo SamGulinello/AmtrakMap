@@ -11,13 +11,31 @@ Last updated: 2026-10-27
 | --- | --- | --- |
 | Strict type check | `npm run typecheck` | Pass, 0 errors |
 | Unit tests | `npm run test` | Pass, 41 tests in 3 files |
-| Production build | `npm run build` | Pass, no chunk-size warning |
+| Production build | `npm run build` | Pass; sizes below |
 | E2E, desktop (1440x900) | `npm run test:e2e` | Pass, 12 scenarios |
 | E2E, mobile (Pixel 7) | `npm run test:e2e` | Pass, 12 scenarios |
-| Live data path | manual, live mode | Verified: 163 trains, live labels |
+| Live data path | manual, live mode | Verified: LIVE badge, 85 trains, stale flag |
+| Dependency audit | `npm audit` | 0 vulnerabilities |
 
-Main bundle is 993 kB (279 kB gzipped). The 1 MB demo fixture is a separate
-lazy-loaded chunk, so live users never download it.
+Bundling is split by concern: application code is 48 kB (15 kB gzipped), React is
+140 kB, and MapLibre is 1.06 MB (287 kB gzipped) in its own long-lived vendor
+chunk. The 1 MB demo fixture is a separate lazy-loaded chunk, so live users never
+download it.
+
+### Dependency security
+
+Two advisories mattered enough to act on:
+
+- **maplibre-gl <= 6.4.0 (critical)** — a `DOM.sanitize()` bypass allowing XSS.
+  Upgraded to 6.16.0. MapLibre 6 resolves its worker from `import.meta.url`, which
+  breaks in a bundled build, so the worker is emitted as an asset and registered
+  with `setWorkerUrl`.
+- **vite, vitest, @playwright/test** — a tinypool prototype-pollution RCE chain, an
+  esbuild dev-server request leak, and Playwright installing browsers without
+  verifying TLS. All upgraded, bringing the audit to zero.
+
+The remaining advisories were all in the build and test toolchain, never in code
+shipped to a browser.
 
 ## What works
 
