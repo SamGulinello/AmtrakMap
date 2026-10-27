@@ -22,4 +22,4 @@
     "resolveJsonModule": true
   },
   "include": ["src", "tests"]
-}
+}composite: true

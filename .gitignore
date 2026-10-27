@@ -11,3 +11,4 @@ dist-ssr
 coverage
 playwright-report
 .agent_tmp
+*.tsbuildinfo
