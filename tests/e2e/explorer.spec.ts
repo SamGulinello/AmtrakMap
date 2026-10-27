@@ -136,6 +136,23 @@ test.describe('Amtrak Live Explorer', () => {
   });
 });
 
+test.describe('keyboard navigation', () => {
+  test('"/" focuses search without stealing keys from a text field', async ({ page }) => {
+    await page.goto(DEMO);
+    const search = page.getByPlaceholder('Search trains, stations, routes…');
+
+    await page.locator('body').click({ position: { x: 5, y: 5 } });
+    await page.keyboard.press('/');
+    await expect(search).toBeFocused();
+    await expect(search).toHaveValue('');
+
+    // A literal slash typed into the field must reach the field, not refocus it.
+    await search.fill('a');
+    await page.keyboard.press('/');
+    await expect(search).toHaveValue('a/');
+  });
+});
+
 test.describe('degraded conditions', () => {
   test('shows an offline notice instead of silently pretending to be live', async ({ page, context }) => {
     await page.goto(DEMO);
@@ -163,6 +180,18 @@ test.describe('degraded conditions', () => {
 
     // Whatever is displayed must still be honestly labelled as a snapshot.
     await expect(page.getByTestId('source-badge')).toHaveAttribute('aria-label', /demo snapshot/i);
+  });
+
+  test('reports a hard load failure instead of spinning forever', async ({ page, context }) => {
+    // Break both the live feed and the snapshot chunk so no data path works.
+    await context.route('https://api.amtraker.com/**', (route) => route.abort());
+    await context.route('**/amtraker-trains.snapshot*.js', (route) => route.abort());
+    await page.goto('/?mode=demo');
+
+    const bootError = page.getByTestId('boot-error');
+    await expect(bootError).toBeVisible({ timeout: 20_000 });
+    await expect(bootError).toContainText('could not be loaded');
+    await expect(bootError.getByTestId('boot-retry')).toBeVisible();
   });
 
   test('explains an empty filter result rather than showing a blank list', async ({ page }) => {

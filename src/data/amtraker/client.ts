@@ -31,10 +31,18 @@ export interface AmtrakerEndpoints {
   stale: string;
 }
 
+/**
+ * Base URL for the public API. Overriding it lets a deployment point at a
+ * self-hosted mirror or a caching proxy. Only a public base URL belongs here —
+ * this value ships in the client bundle.
+ */
+export const API_BASE: string =
+  import.meta.env.VITE_AMTRAKER_API_BASE?.replace(/\/+$/, '') || 'https://api.amtraker.com';
+
 export const DEFAULT_ENDPOINTS: AmtrakerEndpoints = {
-  trains: 'https://api.amtraker.com/v2/trains',
-  stations: 'https://api.amtraker.com/v2/stations',
-  stale: 'https://api.amtraker.com/v2/stale',
+  trains: `${API_BASE}/v2/trains`,
+  stations: `${API_BASE}/v2/stations`,
+  stale: `${API_BASE}/v2/stale`,
 };
 
 /** How long a successful snapshot may be reused between manual refreshes. */

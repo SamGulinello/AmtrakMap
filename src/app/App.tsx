@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { getProvider, type ProviderMode } from '../data';
 import { useOnlineStatus } from '../hooks/useOnlineStatus';
 import { DataNotice } from './DataNotice';
+import { SEARCH_INPUT_ID } from './Sidebar';
 import { emptyFilters, type AppFilters } from '../data/provider';
 import { useNetworkData } from '../hooks/useNetworkData';
 import {
@@ -40,6 +41,9 @@ export default function App() {
   const [filters, setFilters] = useState<AppFilters>(emptyFilters);
   const [selection, setSelection] = useState<Selection>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  // Bumped when the "/" shortcut asks for the search field. Focusing inside the
+  // key handler would run before the drawer has rendered open on narrow screens.
+  const [searchFocusRequest, setSearchFocusRequest] = useState(0);
   const online = useOnlineStatus();
 
   const trains = snapshot?.trains ?? [];
@@ -86,18 +90,51 @@ export default function App() {
       if (e.key === 'Escape') {
         setSelection(null);
         setSidebarOpen(false);
+        return;
       }
+      if (e.key !== '/' || e.metaKey || e.ctrlKey || e.altKey) return;
+      const active = document.activeElement;
+      const typing =
+        active instanceof HTMLInputElement ||
+        active instanceof HTMLTextAreaElement ||
+        active instanceof HTMLSelectElement ||
+        (active instanceof HTMLElement && active.isContentEditable);
+      if (typing) return;
+      if (!document.getElementById(SEARCH_INPUT_ID)) return;
+      e.preventDefault();
+      setSidebarOpen(true);
+      setSearchFocusRequest((n) => n + 1);
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
+  useEffect(() => {
+    if (searchFocusRequest === 0) return;
+    document.getElementById(SEARCH_INPUT_ID)?.focus();
+  }, [searchFocusRequest, sidebarOpen]);
+
   if (!hasLoadedOnce && !snapshot) {
+    // A hard failure here means even the snapshot fallback could not load, so
+    // stop pretending to be busy and say what happened.
+    if (status.error) {
+      return (
+        <div className="boot-screen" data-testid="boot-error">
+          <div className="title">Amtrak Live Explorer</div>
+          <div role="alert" className="boot-error-message">
+            The rail data could not be loaded. {status.error}
+          </div>
+          <button className="btn" onClick={() => void refresh()} data-testid="boot-retry">
+            Try again
+          </button>
+        </div>
+      );
+    }
     return (
-      <div className="boot-screen">
+      <div className="boot-screen" data-testid="boot-loading">
         <div className="spinner" />
         <div className="title">Amtrak Live Explorer</div>
-        <div>{status.error ? `Error: ${status.error}` : 'Contacting rail data source…'}</div>
+        <div>Contacting rail data source…</div>
       </div>
     );
   }

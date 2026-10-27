@@ -7,6 +7,9 @@ import type { Selection } from './App';
 import type { DataSourceStatus } from '../types/domain';
 import { formatAge } from '../utils/time';
 
+/** Stable id so the "/" shortcut can focus the search field from the shell. */
+export const SEARCH_INPUT_ID = 'explorer-search';
+
 /** Render a service date compactly: full ISO dates as "Oct 25", day-of-month as "day 25". */
 function formatServiceDate(value: string): string {
   if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
@@ -32,6 +35,7 @@ function SearchField({
         <path d="m21 21-4.3-4.3" />
       </svg>
       <input
+        id={SEARCH_INPUT_ID}
         className="search-input"
         type="text"
         placeholder="Search trains, stations, routes…"

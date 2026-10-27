@@ -1037,3 +1037,14 @@ input[type='text'].filter-input {
   align-self: center;
   flex: none;
 }
+
+.boot-error-message {
+  max-width: 420px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--warn);
+}
+
+.boot-screen .btn {
+  margin-top: 4px;
+}
