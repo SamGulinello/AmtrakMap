@@ -1,0 +1,1 @@
+{"root":["./src/vite-env.d.ts","./src/data/http.ts","./src/data/index.ts","./src/data/provider.ts","./src/data/routes.ts","./src/data/amtraker/client.ts","./src/data/amtraker/demo.ts","./src/data/amtraker/normalize.ts","./src/data/amtraker/types.ts","./src/hooks/useNetworkData.ts","./src/types/domain.ts"],"version":"5.6.3"}
