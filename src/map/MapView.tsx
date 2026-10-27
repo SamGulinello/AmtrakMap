@@ -140,7 +140,14 @@ export function MapView({ snapshot, filters, selection, onSelectTrain, onSelectS
         type: 'circle',
         source: 'trains',
         paint: {
-          'circle-radius': ['get', 'halo'],
+          // Shrink the halo at national zoom, where 165 markers otherwise merge
+          // into a single blob in dense corridors.
+          'circle-radius': [
+            'interpolate', ['linear'], ['zoom'],
+            2, ['*', ['get', 'halo'], 0.4],
+            5, ['*', ['get', 'halo'], 0.75],
+            7, ['get', 'halo'],
+          ],
           'circle-color': ['get', 'color'],
           'circle-opacity': 0.22,
         },
@@ -150,7 +157,12 @@ export function MapView({ snapshot, filters, selection, onSelectTrain, onSelectS
         type: 'circle',
         source: 'trains',
         paint: {
-          'circle-radius': ['get', 'radius'],
+          'circle-radius': [
+            'interpolate', ['linear'], ['zoom'],
+            2, ['*', ['get', 'radius'], 0.4],
+            5, ['*', ['get', 'radius'], 0.75],
+            7, ['get', 'radius'],
+          ],
           'circle-color': ['get', 'color'],
           'circle-stroke-width': 1.6,
           'circle-stroke-color': '#0b1220',

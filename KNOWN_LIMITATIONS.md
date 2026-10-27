@@ -53,8 +53,15 @@ a suspended route may be missing.
 ## Rendering and interaction
 
 **Marker clustering is not implemented.** All positioned trains render as
-individual markers. At nationwide zoom the markers can overlap in dense corridors
-such as the Northeast. Zooming in separates them.
+individual markers. Marker size scales with zoom (smaller at the national view,
+full size from zoom 7) so trains stay distinguishable in dense corridors such as
+the Northeast, but overlapping markers there still cannot be selected individually
+without zooming in.
+
+**A portrait phone cannot frame the country without spare room.** The national view
+fits the continental bounding box, which on a tall narrow screen leaves ocean and
+Canada above and below. Cropping to the US would hide the network's edges, so the
+spare room is kept.
 
 **The corridor geometry is schematic.** Route lines connect stations in sequence
 rather than following surveyed track. They indicate which stations belong to a

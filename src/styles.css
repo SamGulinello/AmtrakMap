@@ -91,6 +91,7 @@ a {
   align-items: center;
   gap: 12px;
   padding: 0 16px;
+  min-width: 0;
   background: var(--bg-elev);
   border-bottom: 1px solid var(--border);
   z-index: 30;
@@ -101,12 +102,15 @@ a {
   align-items: baseline;
   gap: 8px;
   white-space: nowrap;
+  min-width: 0;
 }
 
 .brand-name {
   font-weight: 700;
   font-size: 15px;
   letter-spacing: 0.3px;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .brand-sub {
@@ -788,11 +792,22 @@ input[type='text'].filter-input {
   .header-right {
     gap: 6px;
   }
-  .btn-label {
+  /* Icon-only refresh on phones: the visible label was overflowing the header
+     and clipping the button. `aria-label="Refresh"` keeps it announced. */
+  .header-right .btn-label {
     display: none;
+  }
+  .header-right .btn {
+    padding: 6px 8px;
+    flex: none;
   }
   .status-strip .time {
     font-size: 10.5px;
+  }
+  /* "1h 44m ago" alone fits the phone header; the prefix pushed it onto four
+     lines. The full sentence stays available via aria-label. */
+  .status-strip .time-prefix {
+    display: none;
   }
   .network-toggle-hamburger {
     display: inline-flex;
@@ -890,6 +905,7 @@ input[type='text'].filter-input {
 .status-strip .time {
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 .spinner {

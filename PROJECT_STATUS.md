@@ -12,8 +12,8 @@ Last updated: 2026-10-27
 | Strict type check | `npm run typecheck` | Pass, 0 errors |
 | Unit tests | `npm run test` | Pass, 41 tests in 3 files |
 | Production build | `npm run build` | Pass; sizes below |
-| E2E, desktop (1440x900) | `npm run test:e2e` | Pass, 12 scenarios |
-| E2E, mobile (Pixel 7) | `npm run test:e2e` | Pass, 12 scenarios |
+| E2E, desktop (1440x900) | `npm run test:e2e` | Pass, 13 scenarios |
+| E2E, mobile (Pixel 7) | `npm run test:e2e` | Pass, 13 scenarios |
 | Live data path | manual, live mode | Verified: LIVE badge, 85 trains, stale flag |
 | Dependency audit | `npm audit` | 0 vulnerabilities |
 
@@ -84,20 +84,22 @@ status badges, live-region status notices.
   provenance on every position, corridor derivation, pinned network counts,
   position withheld from predeparture trains.
 
-**E2E (12 scenarios, run at both viewports, 24 runs total)**
+**E2E (13 scenarios, run at both viewports, 26 runs total)**
 
 1. National map, network summary, demo labelling, freshness wording.
-2. Train selection populates the detail panel with stops and provenance.
-3. Search filters trains and shows grouped results.
-4. Route filter narrows the list; map stays interactive; map controls respond.
-5. Station selection shows details and serving trains.
-6. Refresh runs and leaves the UI consistent.
-7. Escape closes the detail panel.
-8. `/` focuses search, and a slash typed inside the field stays in the field.
-9. Offline transition shows a notice and clears it on reconnect.
-10. Live feed unreachable falls back to a clearly labelled snapshot.
-11. A total load failure shows a retryable error instead of spinning.
-12. A search with no matches shows an explicit empty state.
+2. The header fits the viewport: no horizontal overflow, the refresh control is
+   fully on screen, and the clock stays on one line.
+3. Train selection populates the detail panel with stops and provenance.
+4. Search filters trains and shows grouped results.
+5. Route filter narrows the list; map stays interactive; map controls respond.
+6. Station selection shows details and serving trains.
+7. Refresh runs and leaves the UI consistent.
+8. Escape closes the detail panel.
+9. `/` focuses search, and a slash typed inside the field stays in the field.
+10. Offline transition shows a notice and clears it on reconnect.
+11. Live feed unreachable falls back to a clearly labelled snapshot.
+12. A total load failure shows a retryable error instead of spinning.
+13. A search with no matches shows an explicit empty state.
 
 Every scenario also fails if the page logs a console error or throws an uncaught
 exception. That check lives in `tests/e2e/fixtures.ts` as an auto fixture, so it

@@ -19,7 +19,11 @@ test.describe('Amtrak Live Explorer', () => {
 
     await expect(page.getByTestId('status-strip')).toBeVisible();
     await expect(page.getByTestId('source-badge')).toHaveAttribute('aria-label', /demo snapshot/i);
-    await expect(page.getByTestId('last-updated')).toContainText(/Feed read|Last good read/);
+    const feedRead = page.getByTestId('last-updated');
+    await expect(feedRead).toContainText(/Feed read|Last good read/);
+    // Phones hide the visible prefix, so the full sentence must survive as the
+    // accessible name rather than being dropped from the DOM.
+    await expect(feedRead).toHaveAttribute('aria-label', /^Feed read |^Last good read /);
     await expect(page.locator('.maplibregl-canvas')).toBeVisible();
 
     // The network summary lives in the filters panel, a drawer on phones.
@@ -33,6 +37,27 @@ test.describe('Amtrak Live Explorer', () => {
     // and demo data must never be dressed up as live.
     await expect(page.getByTestId('freshness-line').first()).toContainText(/Snapshot positions averaged/);
     await expect(page.getByTestId('source-line')).toContainText(/demo/i);
+  });
+
+  test('the header fits the viewport without clipping its controls', async ({ page }) => {
+    await page.goto(DEMO);
+    await expect(page.getByTestId('refresh-button')).toBeVisible();
+
+    const header = page.locator('.app-header');
+    const overflow = await header.evaluate((el) => el.scrollWidth - el.clientWidth);
+    expect(overflow, 'header content is wider than the header').toBeLessThanOrEqual(1);
+
+    // A control clipped by the viewport edge is still "visible" to Playwright, so
+    // assert the button genuinely sits inside the window.
+    const refresh = await page.getByTestId('refresh-button').boundingBox();
+    const viewport = page.viewportSize()!;
+    expect(refresh!.x + refresh!.width).toBeLessThanOrEqual(viewport.width + 1);
+    expect(refresh!.x).toBeGreaterThanOrEqual(0);
+
+    // The visible time must stay on one line; a wrapped clock made the header
+    // four lines tall on a phone.
+    const time = await page.getByTestId('last-updated').boundingBox();
+    expect(time!.height).toBeLessThan(30);
   });
 
   test('selecting a train populates the detail panel with stops', async ({ page }) => {

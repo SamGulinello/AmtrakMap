@@ -42,6 +42,13 @@ export function Header({
 }) {
   const lastUpdateEpoch = status.lastUpdated ? Date.parse(status.lastUpdated) : NaN;
   const canRefresh = !status.refreshing;
+  // Phone widths hide the visible prefix to save a line, so the full sentence is
+  // carried on the element for screen readers.
+  const feedReadText = !status.lastUpdated
+    ? 'Feed not read yet'
+    : status.ok
+      ? `Feed read ${formatRelative(Number.isNaN(lastUpdateEpoch) ? 0 : lastUpdateEpoch)}`
+      : `Last good read ${formatClock(status.lastUpdated)}`;
 
   return (
     <header className="app-header">
@@ -69,12 +76,24 @@ export function Header({
           {status.error && (
             <span className="status-dot error" aria-hidden="true" data-testid="error-indicator" />
           )}
-          <span className="time" data-testid="last-updated">
-            {!status.lastUpdated
-              ? '—'
-              : status.ok
-                ? `Feed read ${formatRelative(Number.isNaN(lastUpdateEpoch) ? 0 : lastUpdateEpoch)}`
-                : `Last good read ${formatClock(status.lastUpdated)}`}
+          <span
+            className="time"
+            data-testid="last-updated"
+            aria-label={feedReadText}
+          >
+            {!status.lastUpdated ? (
+              '—'
+            ) : status.ok ? (
+              <>
+                <span className="time-prefix">Feed read </span>
+                {formatRelative(Number.isNaN(lastUpdateEpoch) ? 0 : lastUpdateEpoch)}
+              </>
+            ) : (
+              <>
+                <span className="time-prefix">Last good read </span>
+                {formatClock(status.lastUpdated)}
+              </>
+            )}
           </span>
         </div>
         <button
@@ -91,7 +110,7 @@ export function Header({
               <path d="M21 12a9 9 0 1 1-2.64-6.36M21 3v6h-6" />
             </svg>
           )}
-          Refresh
+          <span className="btn-label">Refresh</span>
         </button>
       </div>
     </header>
