@@ -20,6 +20,7 @@ import type {
   TrainPosition,
 } from '../../types/domain';
 import { routeMeta, routeSlug } from '../routes';
+import { sameInstant } from '../../utils/time';
 import type {
   AmtrakerStationMeta,
   AmtrakerStationResponse,
@@ -106,15 +107,31 @@ function parseStop(raw: AmtrakerStop, index: number, count: number): StopPredict
   const status = normalizeStopStatus(raw.status);
 
   // Treat arr/dep as estimates only while the stop has not yet been departed.
+  // The provider fills future stops with the scheduled time verbatim; an
+  // identical value is not a prediction, so it must never be shown as one.
   const isDeparted = status === 'departed' || (index === count - 1 && actualDeparture !== undefined);
-  const estimatedArrival = isDeparted ? undefined : actualArrival;
-  const estimatedDeparture = isDeparted ? undefined : actualDeparture;
+  const estimatedArrival =
+    isDeparted || sameInstant(raw.arr, raw.schArr) ? undefined : actualArrival;
+  const estimatedDeparture =
+    isDeparted || sameInstant(raw.dep, raw.schDep) ? undefined : actualDeparture;
 
+  // The delay badge must describe the time that is actually displayed, so both
+  // use the same basis: an arrival when the stop has one, else a departure.
+  // The origin has no inbound arrival, so it is always departure-based.
+  const isOrigin = index === 0;
   let delay: number | undefined;
-  if (isDeparted && actualDeparture) {
-    delay = delayMinutes(scheduledDeparture ?? scheduledArrival, actualDeparture);
+  if (isDeparted) {
+    if (!isOrigin && actualArrival) {
+      delay = delayMinutes(scheduledArrival ?? scheduledDeparture, actualArrival);
+    } else if (actualDeparture) {
+      delay = delayMinutes(scheduledDeparture ?? scheduledArrival, actualDeparture);
+    }
+  } else if (isOrigin && estimatedDeparture) {
+    delay = delayMinutes(scheduledDeparture ?? scheduledArrival, estimatedDeparture);
   } else if (estimatedArrival) {
     delay = delayMinutes(scheduledArrival ?? scheduledDeparture, estimatedArrival);
+  } else if (estimatedDeparture) {
+    delay = delayMinutes(scheduledDeparture ?? scheduledArrival, estimatedDeparture);
   }
 
   let normalizedStatus = status;
@@ -206,6 +223,7 @@ export function parseTrain(raw: AmtrakerTrain): Train {
     routeName: nonEmpty(raw.routeName) ? raw.routeName : 'Unknown',
     routeSlug: slugFor(raw.routeName),
     displayName: `${nonEmpty(raw.routeName) ? raw.routeName : 'Train'} ${raw.trainNum ?? ''}`.trim(),
+    serviceDate: serviceDateOf(raw.trainID, firstStop?.scheduledDeparture),
     state,
     provider: nonEmpty(raw.provider) ? raw.provider : 'Unknown',
     position,
@@ -216,13 +234,31 @@ export function parseTrain(raw: AmtrakerTrain): Train {
     eventStationCode: isWithin(raw.eventCode) ? raw.eventCode : undefined,
     eventStationName: nonEmpty(raw.eventName) ? raw.eventName : undefined,
     statusMessage: nonEmpty(raw.statusMsg) && raw.statusMsg !== ' ' ? raw.statusMsg : undefined,
-    delaySummary: undefined, // not synthesized; computed on demand from stops
+    delaySummary: computeDelaySummary({ stops }),
     stops,
     alerts: parseAlerts(raw),
     createdAt: validIso(raw.createdAt),
     updatedAt: validIso(raw.updatedAt),
     isStale,
   };
+}
+
+/**
+ * Derive the service (origin departure) date. The provider encodes the origin
+ * day-of-month in the train id suffix ("5-26"), and the origin stop carries the
+ * authoritative scheduled departure date when present. Long-distance trains
+ * from different origin days share a train number, so this date disambiguates
+ * them in the UI.
+ */
+export function serviceDateOf(trainId: string | undefined, originDeparture?: string): string | undefined {
+  const fromStop = originDeparture ? originDeparture.slice(0, 10) : undefined;
+  if (fromStop && /^\d{4}-\d{2}-\d{2}$/.test(fromStop)) return fromStop;
+  const dayPart = trainId?.split('-')[1];
+  if (dayPart && /^\d{1,2}$/.test(dayPart)) {
+    const day = Number.parseInt(dayPart, 10);
+    if (day >= 1 && day <= 31) return String(day).padStart(2, '0');
+  }
+  return undefined;
 }
 
 /** Compute a human delay summary from the current (next) stop when possible. */

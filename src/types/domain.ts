@@ -139,6 +139,13 @@ export interface Train {
   routeSlug?: string;
   /** Display name: route name plus train number. */
   displayName: string;
+  /**
+   * Service (origin departure) date as YYYY-MM-DD, or the two-digit origin
+   * day-of-month when only the id suffix is available. Long-distance trains
+   * with the same number from different origin days share a number, so this
+   * disambiguates them.
+   */
+  serviceDate?: string;
   /** Operational state: active or predeparture. */
   state: 'active' | 'predeparture' | 'unknown';
   /** Provider that supplies this train, e.g. "Amtrak", "Via", "Brightline". */

@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import type { DataKind, Station, StopPrediction, Train } from '../types/domain';
-import { formatNumber, formatRelative, formatTime } from '../utils/time';
+import { formatNumber, formatRelative, formatTime, sameInstant } from '../utils/time';
 import { StatusDot } from '../components/Status';
 
 function CloseButton({ onClick }: { onClick: () => void }) {
@@ -33,12 +33,39 @@ function StopRow({
   highlight: boolean;
 }) {
   const departed = stop.status === 'departed' || stop.status === 'origin';
+  // Match the basis used for the delay badge: arrival when the stop has one,
+  // except at the origin where only a departure is meaningful.
+  const isOrigin = stop.status === 'origin';
+  const actual = isOrigin
+    ? stop.actualDeparture ?? stop.actualArrival
+    : stop.actualArrival ?? stop.actualDeparture;
+  const scheduled = isOrigin
+    ? stop.scheduledDeparture ?? stop.scheduledArrival
+    : stop.scheduledArrival ?? stop.scheduledDeparture;
+  const estimate = isOrigin
+    ? stop.estimatedDeparture ?? stop.estimatedArrival
+    : stop.estimatedArrival ?? stop.estimatedDeparture;
+
   let badge: React.ReactNode = null;
   if (stop.delayMinutes !== undefined) {
     const d = stop.delayMinutes;
     const cls = d <= -5 ? 'early' : d >= 8 ? 'late' : '';
     if (cls) badge = <span className={`stop-badge ${cls}`}>{delayLabel(d)}</span>;
   }
+
+  // Exactly one primary time is shown per stop: an actual when realized, an
+  // estimate when one genuinely differs from the schedule, else the schedule.
+  let primary: React.ReactNode;
+  if (actual) {
+    primary = <span className="stop-act">{formatTime(actual)}</span>;
+  } else if (estimate) {
+    primary = <span className="stop-est">est {formatTime(estimate)}</span>;
+  } else {
+    primary = <span className="stop-sched">{formatTime(scheduled)}</span>;
+  }
+  const secondary =
+    actual && scheduled && !sameInstant(actual, scheduled) ? formatTime(scheduled) : undefined;
+
   return (
     <div className={`stop-row${departed ? ' departed' : ''}`}>
       <span className="stop-ind" aria-hidden="true">
@@ -47,27 +74,14 @@ function StopRow({
       <span className="stop-name">
         {stationName ?? stop.stationCode}
         <span className="stop-code">{stop.stationCode}</span>
-        {highlight && <span style={{ fontSize: 10, color: 'var(--accent)', marginLeft: 6 }}>▲</span>}
-        {stop.status === 'station' && <span style={{ fontSize: 10, color: 'var(--warn)', marginLeft: 4 }}>(at station)</span>}
+        {highlight && (
+          <span className="stop-flag" title="Next reported stop">▲</span>
+        )}
+        {stop.status === 'station' && <span className="stop-at">at station</span>}
       </span>
       <span className="stop-times">
-        {stop.actualArrival ? (
-          <>
-            <span className="stop-act">{formatTime(stop.actualArrival)}</span>
-            <span className="stop-sched"> {formatTime(stop.scheduledArrival)}</span>
-          </>
-        ) : stop.actualDeparture ? (
-          <>
-            <span className="stop-act">{formatTime(stop.actualDeparture)}</span>
-            <span className="stop-sched"> {formatTime(stop.scheduledDeparture)}</span>
-          </>
-        ) : stop.estimatedArrival || stop.estimatedDeparture ? (
-          <span className="stop-est">
-            est {formatTime(stop.estimatedArrival ?? stop.estimatedDeparture)}
-          </span>
-        ) : (
-          <span className="stop-sched">{formatTime(stop.scheduledArrival ?? stop.scheduledDeparture)}</span>
-        )}
+        {primary}
+        {secondary && <span className="stop-sched-alt">{secondary}</span>}
         {badge}
       </span>
     </div>
@@ -214,9 +228,9 @@ export function TrainDetailPanel({
                 />
               ))}
             </div>
-            <div style={{ fontSize: 10.5, color: 'var(--fg-faint)', marginTop: 6 }}>
-              Times shown in each station's local timezone. Struck-through times are scheduled;
-              purple times are estimates; plain times are actuals.
+            <div className="stops-legend">
+              Station-local times. White = reported actual, purple = estimate,
+              grey = scheduled. Small grey line under an actual is the schedule it beat.
             </div>
           </div>
         )}

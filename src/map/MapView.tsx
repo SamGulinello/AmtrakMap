@@ -23,6 +23,20 @@ import type { Selection } from '../app/App';
 export const US_CENTER: GeoPoint = { lat: 39.5, lon: -98.35 };
 export const US_ZOOM = 3.1;
 
+/** Bounding box of the contiguous United States, used for the national view. */
+const CONUS_BOUNDS: [[number, number], [number, number]] = [
+  [-125.5, 24.0],
+  [-66.5, 49.5],
+];
+
+function nationalView(map: maplibregl.Map, animate: boolean): void {
+  const options = {
+    padding: { top: 24, bottom: 24, left: 24, right: 24 },
+    duration: animate ? 600 : 0,
+  };
+  map.fitBounds(CONUS_BOUNDS, options);
+}
+
 const STYLE_URL =
   import.meta.env.VITE_MAP_STYLE_URL ??
   'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json';
@@ -81,7 +95,6 @@ export function MapView({ snapshot, filters, selection, onSelectTrain, onSelectS
     mapRef.current = map;
 
     map.addControl(new maplibregl.AttributionControl({ compact: true }), 'bottom-right');
-    map.addControl(new maplibregl.NavigationControl({ visualizePitch: false }), 'bottom-right');
     map.addControl(new maplibregl.ScaleControl({ unit: 'imperial' }), 'bottom-left');
 
     map.on('load', () => {
@@ -152,6 +165,7 @@ export function MapView({ snapshot, filters, selection, onSelectTrain, onSelectS
         map.on('mouseleave', layer, () => (map.getCanvas().style.cursor = ''));
       }
 
+      nationalView(map, false);
       setReady(true);
     });
 
@@ -228,7 +242,8 @@ export function MapView({ snapshot, filters, selection, onSelectTrain, onSelectS
   const zoomIn = useCallback(() => mapRef.current?.zoomIn(), []);
   const zoomOut = useCallback(() => mapRef.current?.zoomOut(), []);
   const resetView = useCallback(() => {
-    mapRef.current?.easeTo({ center: [US_CENTER.lon, US_CENTER.lat], zoom: US_ZOOM });
+    const map = mapRef.current;
+    if (map) nationalView(map, true);
   }, []);
   const flyToSelectedTrain = useCallback(() => {
     const sel = selectionRef.current;

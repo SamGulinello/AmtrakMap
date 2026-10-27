@@ -5,6 +5,17 @@ import { routeSlug } from '../data/routes';
 import { StatusDot } from '../components/Status';
 import type { Selection } from './App';
 
+/** Render a service date compactly: full ISO dates as "Oct 25", day-of-month as "day 25". */
+function formatServiceDate(value: string): string {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    const d = new Date(`${value}T12:00:00`);
+    if (!Number.isNaN(d.getTime())) {
+      return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+    }
+  }
+  return `day ${value}`;
+}
+
 function SearchField({
   query,
   onQueryChange,
@@ -76,7 +87,14 @@ function TrainListItem({
           {train.originName ?? '—'} → {train.destinationName ?? '—'}
         </span>
       </span>
-      <StatusDot tone={tone} label={label} dotOnly />
+      <span className="train-side">
+        {train.serviceDate && (
+          <span className="train-service-date" data-testid="train-service-date">
+            {formatServiceDate(train.serviceDate)}
+          </span>
+        )}
+        <StatusDot tone={tone} label={label} dotOnly />
+      </span>
     </button>
   );
 }
@@ -130,10 +148,12 @@ function SearchResultsPane({
           <div className="panel-title">Routes ({results.routes.length})</div>
           <div className="train-list">
             {results.routes.slice(0, 6).map((r) => (
-              <div key={r.slug} className="train-item" style={{ cursor: 'default' }}>
+              <div key={r.slug} className="route-item">
                 <span className="train-main">
                   <span className="train-route">{r.name}</span>
-                  <span className="train-meta">{r.serviceStart} — {r.serviceEnd} · {r.activeTrainCount} active</span>
+                  <span className="train-meta">
+                    {r.serviceStart} — {r.serviceEnd} · {r.activeTrainCount} active
+                  </span>
                 </span>
               </div>
             ))}
