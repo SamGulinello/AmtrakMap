@@ -65,6 +65,11 @@ OpenStreetMap data, subject to CARTO's usage policy. If that service is blocked 
 unavailable, the map background fails to load even though the data layers are
 fine. `VITE_MAP_STYLE_URL` allows pointing at a different MapLibre style.
 
+**The builder chunk warning is expected.** MapLibre is roughly 1 MB minified and
+is needed before the map can paint, so it cannot be lazily loaded. It is split into
+its own vendor chunk so it caches separately from application code; the rest of the
+bundle stays small.
+
 **No offline caching of the map.** Going offline shows the last data received plus
 a notice, but basemap tiles already drawn are all that remains visible.
 

@@ -14,9 +14,10 @@ export default defineConfig({
       output: {
         // MapLibre is by far the largest dependency and changes far less often
         // than app code, so it gets its own long-lived cache entry.
-        manualChunks: {
-          maplibre: ['maplibre-gl'],
-          react: ['react', 'react-dom'],
+        manualChunks(id: string) {
+          if (id.includes('node_modules/maplibre-gl')) return 'maplibre';
+          if (id.includes('node_modules/react')) return 'react';
+          return undefined;
         },
       },
     },
