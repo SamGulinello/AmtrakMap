@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './fixtures';
 
 const DEMO = '/?mode=demo';
 
@@ -13,19 +13,8 @@ async function openFiltersOnMobile(page: import('@playwright/test').Page) {
   }
 }
 
-/** Collect console errors and failed requests so a broken run cannot pass silently. */
-function watchForBreakage(page: import('@playwright/test').Page) {
-  const errors: string[] = [];
-  page.on('console', (m) => {
-    if (m.type() === 'error') errors.push(`console: ${m.text()}`);
-  });
-  page.on('pageerror', (e) => errors.push(`pageerror: ${e.message}`));
-  return errors;
-}
-
 test.describe('Amtrak Live Explorer', () => {
   test('renders the national map, network summary, and demo labelling', async ({ page }) => {
-    const errors = watchForBreakage(page);
     await page.goto(DEMO);
 
     await expect(page.getByTestId('status-strip')).toBeVisible();
@@ -44,8 +33,6 @@ test.describe('Amtrak Live Explorer', () => {
     // and demo data must never be dressed up as live.
     await expect(page.getByTestId('freshness-line').first()).toContainText(/Snapshot positions averaged/);
     await expect(page.getByTestId('source-line')).toContainText(/demo/i);
-
-    expect(errors).toEqual([]);
   });
 
   test('selecting a train populates the detail panel with stops', async ({ page }) => {
@@ -154,10 +141,11 @@ test.describe('keyboard navigation', () => {
 });
 
 test.describe('degraded conditions', () => {
-  test('shows an offline notice instead of silently pretending to be live', async ({ page, context }) => {
+  test('shows an offline notice instead of silently pretending to be live', async ({ page, context, consoleGuard }) => {
     await page.goto(DEMO);
     await expect(page.getByTestId('data-notice')).toHaveCount(0);
 
+    consoleGuard.ignore = true;
     await context.setOffline(true);
     await page.evaluate(() => window.dispatchEvent(new Event('offline')));
     const notice = page.getByTestId('data-notice');
@@ -169,12 +157,13 @@ test.describe('degraded conditions', () => {
     await expect(notice).toHaveCount(0);
   });
 
-  test('falls back to the labelled snapshot when the live feed is unreachable', async ({ page, context }) => {
+  test('falls back to the labelled snapshot when the live feed is unreachable', async ({ page, context, consoleGuard }) => {
     // Block the upstream API before the app boots so the live provider fails.
     await context.route('https://api.amtraker.com/**', (route) => route.abort());
+    consoleGuard.ignore = true;
     await page.goto('/');
 
-    const notice = page.getByTestId('data-notice');
+        const notice = page.getByTestId('data-notice');
     await expect(notice).toBeVisible({ timeout: 30_000 });
     await expect(notice).toContainText('Data source problem');
 
@@ -182,10 +171,11 @@ test.describe('degraded conditions', () => {
     await expect(page.getByTestId('source-badge')).toHaveAttribute('aria-label', /demo snapshot/i);
   });
 
-  test('reports a hard load failure instead of spinning forever', async ({ page, context }) => {
+  test('reports a hard load failure instead of spinning forever', async ({ page, context, consoleGuard }) => {
     // Break both the live feed and the snapshot chunk so no data path works.
     await context.route('https://api.amtraker.com/**', (route) => route.abort());
     await context.route('**/amtraker-trains.snapshot*.js', (route) => route.abort());
+    consoleGuard.ignore = true;
     await page.goto('/?mode=demo');
 
     const bootError = page.getByTestId('boot-error');

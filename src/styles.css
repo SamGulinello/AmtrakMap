@@ -1048,3 +1048,22 @@ input[type='text'].filter-input {
 .boot-screen .btn {
   margin-top: 4px;
 }
+
+/* Respect the OS "reduce motion" setting: keep the UI functional, drop the
+   decorative movement. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .spinner {
+    animation: none;
+    border-top-color: var(--accent);
+    opacity: 0.9;
+  }
+}

@@ -12,3 +12,5 @@ coverage
 playwright-report
 .agent_tmp
 *.tsbuildinfo
+test-results
+blob-report

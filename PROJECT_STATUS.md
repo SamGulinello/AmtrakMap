@@ -12,8 +12,8 @@ Last updated: 2026-10-27
 | Strict type check | `npm run typecheck` | Pass, 0 errors |
 | Unit tests | `npm run test` | Pass, 41 tests in 3 files |
 | Production build | `npm run build` | Pass, no chunk-size warning |
-| E2E, desktop (1440x900) | `npm run test:e2e` | Pass, 10 scenarios |
-| E2E, mobile (Pixel 7) | `npm run test:e2e` | Pass, 10 scenarios |
+| E2E, desktop (1440x900) | `npm run test:e2e` | Pass, 12 scenarios |
+| E2E, mobile (Pixel 7) | `npm run test:e2e` | Pass, 12 scenarios |
 | Live data path | manual, live mode | Verified: 163 trains, live labels |
 
 Main bundle is 993 kB (279 kB gzipped). The 1 MB demo fixture is a separate
@@ -66,7 +66,7 @@ status badges, live-region status notices.
   provenance on every position, corridor derivation, pinned network counts,
   position withheld from predeparture trains.
 
-**E2E (10 scenarios, run at both viewports)**
+**E2E (12 scenarios, run at both viewports, 24 runs total)**
 
 1. National map, network summary, demo labelling, freshness wording.
 2. Train selection populates the detail panel with stops and provenance.
@@ -75,9 +75,17 @@ status badges, live-region status notices.
 5. Station selection shows details and serving trains.
 6. Refresh runs and leaves the UI consistent.
 7. Escape closes the detail panel.
-8. Offline transition shows a notice and clears it on reconnect.
-9. Live feed unreachable falls back to a clearly labelled snapshot.
-10. A search with no matches shows an explicit empty state.
+8. `/` focuses search, and a slash typed inside the field stays in the field.
+9. Offline transition shows a notice and clears it on reconnect.
+10. Live feed unreachable falls back to a clearly labelled snapshot.
+11. A total load failure shows a retryable error instead of spinning.
+12. A search with no matches shows an explicit empty state.
+
+Every scenario also fails if the page logs a console error or throws an uncaught
+exception. That check lives in `tests/e2e/fixtures.ts` as an auto fixture, so it
+cannot be forgotten in a new test; the three scenarios that break the network on
+purpose opt out explicitly via `consoleGuard.ignore`. The guard was verified to
+fail on both an injected `console.error` and an injected uncaught throw.
 
 ## Known defects
 
