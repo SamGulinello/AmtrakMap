@@ -74,8 +74,9 @@ prove the app degrades honestly.
   direction, next stop, status, coordinates, speed, heading, last report time,
   and the full stop list with scheduled and reported or estimated times.
 - **Select a station** to see its address, coordinates, and the trains serving it.
-- **Map controls**: zoom, and the ⌂ button returns to the national view.
-  **Corridors** toggles the route lines independently of the train markers.
+- **Map controls**: zoom, an imperial scale, and the ⌂ button returns to the
+  national view. **Corridors** toggles the route lines independently of the
+  train markers. Selecting a train adds a **Center train** button on the map.
 - **Escape** closes an open detail panel.
 - Below 860 px the filter panel becomes a drawer opened from the ☰ button.
 
@@ -117,10 +118,11 @@ src/
   types/          Shared domain types: Route, Station, Train, TrainPosition,
                   StopPrediction, ServiceAlert, DataSourceStatus
   data/           Provider abstraction, Amtraker client, normalization, caching,
-                  fixture-backed demo provider, route colours
+                  fixture-backed demo provider, route metadata
   hooks/          Snapshot lifecycle (load, bounded polling, manual refresh),
                   connectivity tracking
-  map/            MapLibre setup, route/station/train layers, selection, controls
+  map/            MapLibre setup, route/station/train layers, route colour
+                  palette, selection, controls
   trains/         Search, filtering, selection selectors; train detail panel
   app/            Shell, header, sidebar, station panel, data notices
   components/     Reusable primitives (status dots, map UI)
@@ -148,8 +150,9 @@ station's local timezone without conversion to the viewer's.
 
 - Train and station data: [Amtraker](https://amtraker.com), which serves Amtrak
   data. Not affiliated with or endorsed by Amtrak.
-- Basemap: [CARTO](https://carto.com/about-carto/) Positron tiles on
-  [OpenStreetMap](https://www.openstreetmap.org/copyright) data.
+- Basemap: [CARTO](https://carto.com/about-carto/) dark-matter tiles on
+  [OpenStreetMap](https://www.openstreetmap.org/copyright) data, with CARTO's
+  attribution shown in the map corner.
 - Mapping library: [MapLibre GL JS](https://maplibre.org).
 
 This is an independent project and is not affiliated with Amtrak.
