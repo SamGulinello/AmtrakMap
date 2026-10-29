@@ -195,8 +195,95 @@ describe('deriveRoutes', () => {
     expect(zephyr?.activeTrainCount).toBe(1);
     expect(routes.some((r) => r.slug === 'mystery')).toBe(false);
   });
-});
 
+  it('stitches itineraries into one corridor that follows the actual route via intermediate stops', () => {
+    // Two Acela trains share the corridor. The corridor must follow the train's
+    // actual path through the CT-coast stops instead of drawing a straight
+    // WAS-NYP line and parking the northern stops elsewhere.
+    const pos2 = new Map([
+      ['WAS', { lat: 38.9, lon: -77.01 }],
+      ['BWI', { lat: 39.19, lon: -76.67 }],
+      ['BAL', { lat: 39.31, lon: -76.62 }],
+      ['WIL', { lat: 39.74, lon: -75.55 }],
+      ['PHL', { lat: 39.95, lon: -75.16 }],
+      ['MET', { lat: 40.57, lon: -74.33 }],
+      ['NWK', { lat: 40.73, lon: -74.16 }],
+      ['NYP', { lat: 40.75, lon: -73.99 }],
+      ['STM', { lat: 41.05, lon: -73.54 }],
+      ['NHV', { lat: 41.3, lon: -72.93 }],
+      ['PVD', { lat: 41.83, lon: -71.42 }],
+      ['RTE', { lat: 42.21, lon: -71.15 }],
+      ['BBY', { lat: 42.34, lon: -71.06 }],
+      ['BOS', { lat: 42.35, lon: -71.06 }],
+    ]);
+    const trains = [
+      { routeName: 'Acela', routeSlug: 'acela', state: 'active' as const, stops: stops(['WAS', 'BWI', 'BAL', 'WIL', 'PHL', 'MET', 'NWK', 'NYP', 'STM', 'NHV', 'PVD', 'RTE', 'BBY', 'BOS']) },
+      { routeName: 'Acela', routeSlug: 'acela', state: 'active' as const, stops: stops(['WAS', 'BAL', 'PHL', 'NWK', 'NYP']) },
+    ];
+    const routes = deriveRoutes(trains as unknown as Parameters<typeof deriveRoutes>[0], pos2);
+    const acela = routes.find((r) => r.slug === 'acela');
+    expect(acela?.stationCodes).toEqual([
+      'WAS', 'BWI', 'BAL', 'WIL', 'PHL', 'MET', 'NWK', 'NYP', 'STM', 'NHV', 'PVD', 'RTE', 'BBY', 'BOS',
+    ]);
+  });
+
+  it('orients reversed itineraries to the corridor direction', () => {
+    const pos2 = new Map([
+      ['WAS', { lat: 38.9, lon: -77.01 }],
+      ['BAL', { lat: 39.31, lon: -76.62 }],
+      ['PHL', { lat: 39.95, lon: -75.16 }],
+      ['NWK', { lat: 40.73, lon: -74.16 }],
+      ['NYP', { lat: 40.75, lon: -73.99 }],
+      ['STM', { lat: 41.05, lon: -73.54 }],
+      ['BOS', { lat: 42.35, lon: -71.06 }],
+    ]);
+    const trains = [
+      { routeName: 'Acela', routeSlug: 'acela', state: 'active' as const, stops: stops(['WAS', 'BAL', 'PHL', 'NWK', 'NYP', 'STM', 'BOS']) },
+      { routeName: 'Acela', routeSlug: 'acela', state: 'active' as const, stops: stops(['BOS', 'STM', 'NYP', 'PHL', 'BAL', 'WAS']) },
+    ];
+    const routes = deriveRoutes(trains as unknown as Parameters<typeof deriveRoutes>[0], pos2);
+    const acela = routes.find((r) => r.slug === 'acela');
+    expect(acela?.stationCodes).toEqual(['WAS', 'BAL', 'PHL', 'NWK', 'NYP', 'STM', 'BOS']);
+  });
+
+  it('folds single-anchor branches as contiguous spurs', () => {
+    // A Wolverine-style route with a spur to GRR that meets the corridor only
+    // at CHI. The spur must sit contiguously at the junction.
+    const pos2 = new Map([
+      ['CHI', { lat: 41.878, lon: -87.636 }],
+      ['NLS', { lat: 41.96, lon: -86.55 }],
+      ['NBU', { lat: 41.97, lon: -86.25 }],
+      ['BTL', { lat: 42.32, lon: -85.18 }],
+      ['KAL', { lat: 42.29, lon: -85.58 }],
+      ['DRD', { lat: 42.46, lon: -83.35 }],
+      ['DET', { lat: 42.33, lon: -83.05 }],
+      ['GRR', { lat: 42.96, lon: -85.66 }],
+    ]);
+    const trains = [
+      { routeName: 'Wolverine', routeSlug: 'wolverine', state: 'active' as const, stops: stops(['CHI', 'NLS', 'NBU', 'KAL', 'BTL', 'DRD', 'DET']) },
+      { routeName: 'Wolverine', routeSlug: 'wolverine', state: 'active' as const, stops: stops(['CHI', 'GRR']) },
+    ];
+    const routes = deriveRoutes(trains as unknown as Parameters<typeof deriveRoutes>[0], pos2);
+    const wolverine = routes.find((r) => r.slug === 'wolverine');
+    expect(wolverine?.stationCodes).toEqual(['CHI', 'GRR', 'NLS', 'NBU', 'KAL', 'BTL', 'DRD', 'DET']);
+  });
+
+  it('deduplicates fused itineraries', () => {
+    const pos2 = new Map([
+      ['CHI', { lat: 41.878, lon: -87.636 }],
+      ['OMA', { lat: 41.26, lon: -95.935 }],
+      ['DEN', { lat: 39.758, lon: -104.993 }],
+      ['EMY', { lat: 37.842, lon: -122.295 }],
+    ]);
+    const trains = [
+      { routeName: 'California Zephyr', routeSlug: 'california-zephyr', state: 'active' as const, stops: stops(['CHI', 'OMA', 'OMA', 'DEN', 'EMY']) },
+      { routeName: 'California Zephyr', routeSlug: 'california-zephyr', state: 'active' as const, stops: stops(['EMY', 'DEN', 'OMA', 'CHI']) },
+    ];
+    const routes = deriveRoutes(trains as unknown as Parameters<typeof deriveRoutes>[0], pos2);
+    const zephyr = routes.find((r) => r.slug === 'california-zephyr');
+    expect(zephyr?.stationCodes).toEqual(['CHI', 'OMA', 'DEN', 'EMY']);
+  });
+});
 describe('computeDelaySummary', () => {
   it('returns undefined when no delay is derivable', () => {
     expect(computeDelaySummary({ stops: [] })).toBeUndefined();

@@ -341,46 +341,153 @@ export function parseStationResponse(raw: AmtrakerStationResponse): Station[] {
 }
 
 /**
+ * Orient an itinerary so it runs in the same direction as an existing
+ * corridor, using the first two stations the itinerary shares with it.
+ * Itineraries that share fewer than two stations are returned unchanged.
+ */
+function orientTo(corridor: string[], itinerary: string[]): string[] {
+  const corridorIndex = new Map<string, number>();
+  corridor.forEach((code, i) => corridorIndex.set(code, i));
+  const anchors: string[] = [];
+  for (const code of itinerary) {
+    if (corridorIndex.has(code)) anchors.push(code);
+    if (anchors.length === 2) break;
+  }
+  if (anchors.length < 2) return itinerary;
+  const [a, b] = anchors;
+  const sameOrder =
+    (itinerary.indexOf(a) < itinerary.indexOf(b)) ===
+    (corridorIndex.get(a)! < corridorIndex.get(b)!);
+  return sameOrder ? itinerary : [...itinerary].reverse();
+}
+
+/**
+ * Merge one route's stop sequences into a single corridor ordering.
+ *
+ * Corridors derive from the sequence of stations each train actually serves,
+ * so merging must preserve that path rather than parking new stations at the
+ * end. The output obeys two properties:
+ *
+ * - Each train with at least two inbound stations appears as a contiguous run
+ *   of stations (forward or reversed) in the corridor.
+ * - Branch legs that share a single station with the corridor are drawn as an
+ *   out-and-back spur from that junction, so a branch train's stops stay
+ *   contiguous and no straight line is invented between distant termini.
+ */
+function orderCorridor(itineraries: string[][]): string[] {
+  const usable = itineraries
+    .map((it) => it.filter((c, i, arr) => arr.indexOf(c) === i))
+    .filter((it) => it.length >= 2)
+    .sort((a, b) => b.length - a.length);
+  if (usable.length === 0) return [];
+
+  const corridor = [...usable[0]];
+  for (const raw of usable.slice(1)) {
+    const index = new Map<string, number>();
+    corridor.forEach((code, i) => index.set(code, i));
+    const anchors = raw
+      .map((code, i) => ({ code, i }))
+      .filter(({ code }) => index.has(code));
+
+    if (anchors.length === 0) {
+      // Disconnected same-named service: keep every station without inventing
+      // a link back to the spine.
+      const present = new Set(corridor);
+      for (const code of raw) {
+        if (!present.has(code)) {
+          corridor.push(code);
+          present.add(code);
+        }
+      }
+      continue;
+    }
+
+    if (anchors.length === 1) {
+      // A branch that rejoins the spine at a single junction. Fold it as an
+      // out-and-back spur so the branch stations stay contiguous and the
+      // corridor retraces back to the junction instead of leaping away.
+      const junction = anchors[0].code;
+      const legs = [
+        raw.slice(0, anchors[0].i).reverse(),
+        raw.slice(anchors[0].i + 1),
+      ].map((leg) => leg.filter((code) => !index.has(code)));
+      const spur = legs.flatMap((leg) => [...leg, ...leg.slice(0, -1).reverse()]);
+      if (spur.length > 0) {
+        corridor.splice(index.get(junction)! + 1, 0, ...spur);
+      }
+      continue;
+    }
+
+    // Two or more shared stations: stitch the itinerary into the corridor at
+    // its shared anchors, preserving the train's actual stop order. Inserts
+    // happen left-to-right, so a single running offset keeps anchor indices
+    // correct as the corridor grows.
+    const itinerary = orientTo(corridor, raw);
+    let offset = 0;
+    let pending: string[] = [];
+    let lastAnchorAt = -1;
+    for (const code of itinerary) {
+      const at = index.get(code);
+      if (at !== undefined) {
+        if (pending.length > 0) {
+          corridor.splice(at + offset, 0, ...pending);
+          offset += pending.length;
+          pending = [];
+        }
+        lastAnchorAt = at + offset;
+      } else {
+        pending.push(code);
+      }
+    }
+    if (pending.length > 0) {
+      corridor.splice(lastAnchorAt >= 0 ? lastAnchorAt + 1 : corridor.length, 0, ...pending);
+    }
+  }
+  return corridor;
+}
+
+/**
  * Derive route definitions from the trains that serve them. The live source
  * does not publish station-to-station geometry, so the route corridor is the
- * ordered sequence of stations observed across active services.
+ * ordered sequence of stations observed across active services, stitched so
+ * the corridor follows each train's actual path rather than jumping straight
+ * between whichever stations happen to be seen first.
  */
 export function deriveRoutes(
   trains: Train[],
   stationPositions: Map<string, { lat: number; lon: number }>,
 ): Route[] {
-  const bySlug = new Map<string, Route>();
+  const routes = new Map<string, Route>();
+  const itineraries = new Map<string, string[][]>();
   for (const train of trains) {
     const slug = train.routeSlug ?? slugFor(train.routeName);
-    const codes = train.stops.map((s) => s.stationCode);
-    const existing = bySlug.get(slug);
+    const codes = train.stops
+      .map((s) => s.stationCode)
+      .filter((c) => c !== '' && stationPositions.has(c));
+    const existing = routes.get(slug);
     if (!existing) {
       const meta = routeMeta(train.routeName);
-      bySlug.set(slug, {
+      routes.set(slug, {
         name: train.routeName,
         slug,
         serviceStart: meta?.endA ?? train.originName ?? '',
         serviceEnd: meta?.endB ?? train.destinationName ?? '',
-        stationCodes: codes,
+        stationCodes: [],
         activeTrainCount: train.state === 'active' ? 1 : 0,
       });
+      itineraries.set(slug, [codes]);
     } else {
       existing.activeTrainCount += train.state === 'active' ? 1 : 0;
-      // Append any new stations not already present to capture corridor length.
-      for (const code of codes) {
-        if (!existing.stationCodes.includes(code)) existing.stationCodes.push(code);
-      }
+      itineraries.get(slug)!.push(codes);
     }
   }
-  const toDrop = new Set<string>();
-  for (const route of bySlug.values()) {
-    route.stationCodes = route.stationCodes
-      .filter((c) => stationPositions.has(c))
-      .filter((c, i, arr) => arr.indexOf(c) === i);
-    if (route.stationCodes.length < 2) toDrop.add(route.slug);
+  const toDrop: string[] = [];
+  for (const [slug, route] of routes) {
+    route.stationCodes = orderCorridor(itineraries.get(slug) ?? []);
+    if (route.stationCodes.length < 2) toDrop.push(slug);
   }
-  for (const slug of toDrop) bySlug.delete(slug);
-  return [...bySlug.values()];
+  for (const slug of toDrop) routes.delete(slug);
+  return [...routes.values()];
 }
 
 export function buildStationPositionMap(
